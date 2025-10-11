@@ -7996,6 +7996,7 @@
               "show_only_forecast": "Show only forecast",
               "forecast_type": "Select forecast type",
               "forecast_slots": "Maximum number of forecast elements to show",
+              "hourly_interval": "Hourly interval (show every Nth hour)",
               "no_type": "No type",
               "daily": "Daily",
               "hourly": "Hourly",

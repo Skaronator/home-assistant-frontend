@@ -564,6 +564,7 @@ export interface WeatherForecastCardConfig extends LovelaceCardConfig {
   show_forecast?: boolean;
   forecast_type?: ForecastType;
   forecast_slots?: number;
+  hourly_interval?: number;
   secondary_info_attribute?: keyof TranslationDict["ui"]["card"]["weather"]["attributes"];
   theme?: string;
   tap_action?: ActionConfig;

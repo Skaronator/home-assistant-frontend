@@ -250,10 +250,19 @@ class HuiWeatherForecastCard extends LitElement implements LovelaceCard {
       itemsToShow = Math.min(7, itemsToShow);
     }
 
-    const forecast =
-      this._config?.show_forecast !== false && forecastData?.forecast?.length
-        ? forecastData.forecast.slice(0, itemsToShow)
-        : undefined;
+    let forecast = undefined as typeof forecastData.forecast | undefined;
+    if (
+      this._config?.show_forecast !== false &&
+      forecastData?.forecast?.length
+    ) {
+      let list = forecastData.forecast;
+      const hourly = forecastData?.type === "hourly";
+      const interval = Math.max(1, this._config?.hourly_interval ?? 1);
+      if (hourly && interval > 1) {
+        list = list.filter((_, idx) => idx % interval === 0);
+      }
+      forecast = list.slice(0, itemsToShow);
+    }
     const weather = !forecast || this._config?.show_current !== false;
 
     const hourly = forecastData?.type === "hourly";

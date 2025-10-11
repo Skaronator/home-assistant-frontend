@@ -35,6 +35,7 @@ const cardConfigStruct = assign(
     show_forecast: optional(boolean()),
     forecast_type: optional(string()),
     forecast_slots: optional(number()),
+    hourly_interval: optional(number()),
     secondary_info_attribute: optional(string()),
     tap_action: optional(actionConfigStruct),
     hold_action: optional(actionConfigStruct),
@@ -140,7 +141,8 @@ export class HuiWeatherForecastCardEditor
       hasForecastLegacy?: boolean,
       hasForecastDaily?: boolean,
       hasForecastHourly?: boolean,
-      hasForecastTwiceDaily?: boolean
+      hasForecastTwiceDaily?: boolean,
+      selectedForecastType?: string
     ) =>
       [
         {
@@ -242,6 +244,15 @@ export class HuiWeatherForecastCardEditor
                 selector: { number: { min: 1, max: 12 } },
                 default: 5,
               },
+              ...(hasForecastHourly && selectedForecastType === "hourly"
+                ? ([
+                    {
+                      name: "hourly_interval",
+                      selector: { number: { min: 1, max: 6 } },
+                      default: 1,
+                    },
+                  ] as const)
+                : []),
               {
                 name: "interactions",
                 type: "expandable",
@@ -283,14 +294,6 @@ export class HuiWeatherForecastCardEditor
       return nothing;
     }
 
-    const schema = this._schema(
-      this.hass.localize,
-      this._forecastSupported("legacy"),
-      this._forecastSupported("daily"),
-      this._forecastSupported("hourly"),
-      this._forecastSupported("twice_daily")
-    );
-
     const data: WeatherForecastCardConfig = {
       show_current: true,
       show_forecast: this._hasForecast,
@@ -303,6 +306,15 @@ export class HuiWeatherForecastCardEditor
         : data.show_current
           ? "show_current"
           : "show_forecast";
+
+    const schema = this._schema(
+      this.hass.localize,
+      this._forecastSupported("legacy"),
+      this._forecastSupported("daily"),
+      this._forecastSupported("hourly"),
+      this._forecastSupported("twice_daily"),
+      data.forecast_type
+    );
 
     return html`
       <ha-form
@@ -355,6 +367,10 @@ export class HuiWeatherForecastCardEditor
       case "forecast_slots":
         return this.hass!.localize(
           "ui.panel.lovelace.editor.card.weather-forecast.forecast_slots"
+        );
+      case "hourly_interval":
+        return this.hass!.localize(
+          "ui.panel.lovelace.editor.card.weather-forecast.hourly_interval"
         );
       case "forecast":
         return this.hass!.localize(
