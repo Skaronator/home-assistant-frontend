@@ -39,6 +39,8 @@ const stateTriggerStruct = assign(
     attribute: optional(string()),
     from: optional(union([nullable(string()), array(string())])),
     to: optional(union([nullable(string()), array(string())])),
+    not_from: optional(union([nullable(string()), array(string())])),
+    not_to: optional(union([nullable(string()), array(string())])),
     for: optional(union([number(), string(), forDictStruct])),
   })
 );
@@ -50,6 +52,8 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
   @property({ attribute: false }) public trigger!: StateTrigger;
 
   @property({ type: Boolean }) public disabled = false;
+
+  // No UI-only toggle state — derive from trigger
 
   public static get defaultConfig(): StateTrigger {
     return { trigger: "state", entity_id: [] };
@@ -129,6 +133,27 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
           },
         },
         {
+          name: "from_match",
+          selector: {
+            button_toggle: {
+              options: [
+                {
+                  value: "is",
+                  label: localize(
+                    "ui.panel.config.automation.editor.triggers.type.state.is"
+                  ),
+                },
+                {
+                  value: "is_not",
+                  label: localize(
+                    "ui.panel.config.automation.editor.triggers.type.state.is_not"
+                  ),
+                },
+              ],
+            },
+          },
+        },
+        {
           name: "from",
           context: {
             filter_entity: "entity_id",
@@ -136,8 +161,8 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
           selector: {
             state: {
               multiple: true,
-              extra_options: (attribute
-                ? []
+              extra_options: attribute
+                ? undefined
                 : [
                     {
                       label: localize(
@@ -145,9 +170,30 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
                       ),
                       value: ANY_STATE_VALUE,
                     },
-                  ]) as any,
+                  ],
               attribute: attribute,
               hide_states: hideInFrom,
+            },
+          },
+        },
+        {
+          name: "to_match",
+          selector: {
+            button_toggle: {
+              options: [
+                {
+                  value: "is",
+                  label: localize(
+                    "ui.panel.config.automation.editor.triggers.type.state.is"
+                  ),
+                },
+                {
+                  value: "is_not",
+                  label: localize(
+                    "ui.panel.config.automation.editor.triggers.type.state.is_not"
+                  ),
+                },
+              ],
             },
           },
         },
@@ -159,8 +205,8 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
           selector: {
             state: {
               multiple: true,
-              extra_options: (attribute
-                ? []
+              extra_options: attribute
+                ? undefined
                 : [
                     {
                       label: localize(
@@ -168,7 +214,7 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
                       ),
                       value: ANY_STATE_VALUE,
                     },
-                  ]) as any,
+                  ],
               attribute: attribute,
               hide_states: hideInTo,
             },
@@ -216,8 +262,16 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
       for: trgFor,
     };
 
-    data.to = this._normalizeStates(this.trigger.to, data.attribute);
-    data.from = this._normalizeStates(this.trigger.from, data.attribute);
+    const hasNotFrom = this.trigger.not_from !== undefined;
+    const hasNotTo = this.trigger.not_to !== undefined;
+    data.from_match = hasNotFrom ? "is_not" : "is";
+    data.to_match = hasNotTo ? "is_not" : "is";
+
+    const fromSource = hasNotFrom ? this.trigger.not_from : this.trigger.from;
+    const toSource = hasNotTo ? this.trigger.not_to : this.trigger.to;
+
+    data.from = this._normalizeStates(fromSource, data.attribute);
+    data.to = this._normalizeStates(toSource, data.attribute);
     const schema = this._schema(
       this.hass.localize,
       this.trigger.attribute,
@@ -240,15 +294,68 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
   private _valueChanged(ev: CustomEvent): void {
     ev.stopPropagation();
     const newTrigger = ev.detail.value;
+    const fromMatch = newTrigger.from_match === "is_not" ? "is_not" : "is";
+    const toMatch = newTrigger.to_match === "is_not" ? "is_not" : "is";
 
-    newTrigger.to = this._applyAnyStateExclusive(
-      newTrigger.to,
-      newTrigger.attribute
-    );
-    newTrigger.from = this._applyAnyStateExclusive(
+    // Sanitize values based on match mode
+    const sanitizedFrom = this._sanitizeForMatch(
       newTrigger.from,
+      fromMatch,
       newTrigger.attribute
     );
+    const sanitizedTo = this._sanitizeForMatch(
+      newTrigger.to,
+      toMatch,
+      newTrigger.attribute
+    );
+
+    // Apply back to correct keys and clean up UI-only props
+    delete newTrigger.from_match;
+    delete newTrigger.to_match;
+
+    if (fromMatch === "is_not") {
+      delete newTrigger.from;
+      if (
+        sanitizedFrom !== undefined &&
+        !(Array.isArray(sanitizedFrom) && sanitizedFrom.length === 0)
+      ) {
+        newTrigger.not_from = sanitizedFrom;
+      } else {
+        delete newTrigger.not_from;
+      }
+    } else {
+      delete newTrigger.not_from;
+      if (
+        sanitizedFrom !== undefined &&
+        !(Array.isArray(sanitizedFrom) && sanitizedFrom.length === 0)
+      ) {
+        newTrigger.from = sanitizedFrom;
+      } else {
+        delete newTrigger.from;
+      }
+    }
+
+    if (toMatch === "is_not") {
+      delete newTrigger.to;
+      if (
+        sanitizedTo !== undefined &&
+        !(Array.isArray(sanitizedTo) && sanitizedTo.length === 0)
+      ) {
+        newTrigger.not_to = sanitizedTo;
+      } else {
+        delete newTrigger.not_to;
+      }
+    } else {
+      delete newTrigger.not_to;
+      if (
+        sanitizedTo !== undefined &&
+        !(Array.isArray(sanitizedTo) && sanitizedTo.length === 0)
+      ) {
+        newTrigger.to = sanitizedTo;
+      } else {
+        delete newTrigger.to;
+      }
+    }
 
     Object.keys(newTrigger).forEach((key) => {
       const val = newTrigger[key];
@@ -262,6 +369,28 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
     });
 
     fireEvent(this, "value-changed", { value: newTrigger });
+  }
+
+  private _sanitizeForMatch(
+    val: string | string[] | null | undefined,
+    match: string,
+    attribute?: string
+  ): string | string[] | null | undefined {
+    if (match === "is") {
+      return this._applyAnyStateExclusive(val, attribute);
+    }
+    // is_not mode: if Any state selected and no attribute, map to null.
+    if (Array.isArray(val)) {
+      if (val.includes(ANY_STATE_VALUE)) {
+        return attribute ? undefined : null;
+      }
+      const filtered = val.filter((v) => v !== ANY_STATE_VALUE);
+      return filtered.length > 0 ? filtered : undefined;
+    }
+    if (val === ANY_STATE_VALUE) {
+      return attribute ? undefined : null;
+    }
+    return val ?? undefined;
   }
 
   private _applyAnyStateExclusive(
@@ -285,11 +414,11 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
     // If no attribute is selected and backend value is null,
     // expose it as the special ANY state option in the UI.
     if (!attribute && value === null) {
-      return [ANY_STATE_VALUE] as any;
+      return [ANY_STATE_VALUE];
     }
     const arr = ensureArray(value);
     if (arr) {
-      return arr as any;
+      return arr;
     }
     return [];
   }
