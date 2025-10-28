@@ -22,7 +22,7 @@ import { fireEvent } from "../../common/dom/fire_event";
 import { listenMediaQuery } from "../../common/dom/media_query";
 import { themesContext } from "../../data/context";
 import type { Themes } from "../../data/ws-themes";
-import type { ECOption } from "../../resources/echarts";
+import type { ECOption } from "../../resources/echarts/echarts";
 import type { HomeAssistant } from "../../types";
 import { isMac } from "../../util/is_mac";
 import "../chips/ha-assist-chip";
@@ -88,9 +88,19 @@ export class HaChartBase extends LitElement {
 
   private _lastTapTime?: number;
 
+  private _shouldResizeChart = false;
+
   // @ts-ignore
   private _resizeController = new ResizeController(this, {
-    callback: () => this.chart?.resize(),
+    callback: () => {
+      if (this.chart) {
+        if (!this.chart.getZr().animation.isFinished()) {
+          this._shouldResizeChart = true;
+        } else {
+          this.chart.resize();
+        }
+      }
+    },
   });
 
   private _loading = false;
@@ -346,7 +356,7 @@ export class HaChartBase extends LitElement {
       if (this.chart) {
         this.chart.dispose();
       }
-      const echarts = (await import("../../resources/echarts")).default;
+      const echarts = (await import("../../resources/echarts/echarts")).default;
 
       if (this.extraComponents?.length) {
         echarts.use(this.extraComponents);
@@ -366,6 +376,7 @@ export class HaChartBase extends LitElement {
       if (!this.options?.dataZoom) {
         this.chart.getZr().on("dblclick", this._handleClickZoom);
       }
+      this.chart.on("finished", this._handleChartRenderFinished);
       if (this._isTouchDevice) {
         this.chart.getZr().on("click", (e: ECElementEvent) => {
           if (!e.zrByTouch) {
@@ -805,7 +816,7 @@ export class HaChartBase extends LitElement {
             sampling: undefined,
             data: downSampleLineData(
               data as LineSeriesOption["data"],
-              this.clientWidth,
+              this.clientWidth * window.devicePixelRatio,
               minX,
               maxX
             ),
@@ -944,6 +955,13 @@ export class HaChartBase extends LitElement {
       this.chart?.resize();
     });
   }
+
+  private _handleChartRenderFinished = () => {
+    if (this._shouldResizeChart) {
+      this.chart?.resize();
+      this._shouldResizeChart = false;
+    }
+  };
 
   static styles = css`
     :host {

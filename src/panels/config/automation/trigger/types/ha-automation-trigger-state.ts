@@ -53,8 +53,6 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
 
   @property({ type: Boolean }) public disabled = false;
 
-  // No UI-only toggle state — derive from trigger
-
   public static get defaultConfig(): StateTrigger {
     return { trigger: "state", entity_id: [] };
   }
@@ -161,8 +159,8 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
           selector: {
             state: {
               multiple: true,
-              extra_options: attribute
-                ? undefined
+              extra_options: (attribute
+                ? []
                 : [
                     {
                       label: localize(
@@ -170,7 +168,7 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
                       ),
                       value: ANY_STATE_VALUE,
                     },
-                  ],
+                  ]),
               attribute: attribute,
               hide_states: hideInFrom,
             },
@@ -205,8 +203,8 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
           selector: {
             state: {
               multiple: true,
-              extra_options: attribute
-                ? undefined
+              extra_options: (attribute
+                ? []
                 : [
                     {
                       label: localize(
@@ -214,7 +212,7 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
                       ),
                       value: ANY_STATE_VALUE,
                     },
-                  ],
+                  ]),
               attribute: attribute,
               hide_states: hideInTo,
             },
@@ -416,11 +414,10 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
     if (!attribute && value === null) {
       return [ANY_STATE_VALUE];
     }
-    const arr = ensureArray(value);
-    if (arr) {
-      return arr;
+    if (value === undefined || value === null) {
+      return [];
     }
-    return [];
+    return ensureArray(value);
   }
 
   private _computeLabelCallback = (
@@ -438,3 +435,4 @@ declare global {
     "ha-automation-trigger-state": HaStateTrigger;
   }
 }
+
