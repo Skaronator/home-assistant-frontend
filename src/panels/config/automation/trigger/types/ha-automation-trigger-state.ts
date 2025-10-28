@@ -159,7 +159,7 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
           selector: {
             state: {
               multiple: true,
-              extra_options: (attribute
+              extra_options: attribute
                 ? []
                 : [
                     {
@@ -168,7 +168,7 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
                       ),
                       value: ANY_STATE_VALUE,
                     },
-                  ]),
+                  ],
               attribute: attribute,
               hide_states: hideInFrom,
             },
@@ -203,7 +203,7 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
           selector: {
             state: {
               multiple: true,
-              extra_options: (attribute
+              extra_options: attribute
                 ? []
                 : [
                     {
@@ -212,7 +212,7 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
                       ),
                       value: ANY_STATE_VALUE,
                     },
-                  ]),
+                  ],
               attribute: attribute,
               hide_states: hideInTo,
             },
@@ -254,7 +254,7 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
   protected render() {
     const trgFor = createDurationData(this.trigger.for);
 
-    const data: any = {
+    const data = {
       ...this.trigger,
       entity_id: ensureArray(this.trigger.entity_id),
       for: trgFor,
@@ -311,49 +311,8 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
     delete newTrigger.from_match;
     delete newTrigger.to_match;
 
-    if (fromMatch === "is_not") {
-      delete newTrigger.from;
-      if (
-        sanitizedFrom !== undefined &&
-        !(Array.isArray(sanitizedFrom) && sanitizedFrom.length === 0)
-      ) {
-        newTrigger.not_from = sanitizedFrom;
-      } else {
-        delete newTrigger.not_from;
-      }
-    } else {
-      delete newTrigger.not_from;
-      if (
-        sanitizedFrom !== undefined &&
-        !(Array.isArray(sanitizedFrom) && sanitizedFrom.length === 0)
-      ) {
-        newTrigger.from = sanitizedFrom;
-      } else {
-        delete newTrigger.from;
-      }
-    }
-
-    if (toMatch === "is_not") {
-      delete newTrigger.to;
-      if (
-        sanitizedTo !== undefined &&
-        !(Array.isArray(sanitizedTo) && sanitizedTo.length === 0)
-      ) {
-        newTrigger.not_to = sanitizedTo;
-      } else {
-        delete newTrigger.not_to;
-      }
-    } else {
-      delete newTrigger.not_to;
-      if (
-        sanitizedTo !== undefined &&
-        !(Array.isArray(sanitizedTo) && sanitizedTo.length === 0)
-      ) {
-        newTrigger.to = sanitizedTo;
-      } else {
-        delete newTrigger.to;
-      }
-    }
+    this._applyMatchAssignment(newTrigger, "from", fromMatch, sanitizedFrom);
+    this._applyMatchAssignment(newTrigger, "to", toMatch, sanitizedTo);
 
     Object.keys(newTrigger).forEach((key) => {
       const val = newTrigger[key];
@@ -367,6 +326,36 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
     });
 
     fireEvent(this, "value-changed", { value: newTrigger });
+  }
+
+  private _applyMatchAssignment(
+    target: any,
+    baseKey: "from" | "to",
+    match: "is" | "is_not",
+    value: string | string[] | null | undefined
+  ): void {
+    const negKey = (`not_` + baseKey) as "not_from" | "not_to";
+
+    const hasValue = !(
+      value === undefined ||
+      (Array.isArray(value) && value.length === 0)
+    );
+
+    if (match === "is_not") {
+      delete target[baseKey];
+      if (hasValue) {
+        target[negKey] = value;
+      } else {
+        delete target[negKey];
+      }
+    } else {
+      delete target[negKey];
+      if (hasValue) {
+        target[baseKey] = value;
+      } else {
+        delete target[baseKey];
+      }
+    }
   }
 
   private _sanitizeForMatch(
@@ -435,4 +424,3 @@ declare global {
     "ha-automation-trigger-state": HaStateTrigger;
   }
 }
-
