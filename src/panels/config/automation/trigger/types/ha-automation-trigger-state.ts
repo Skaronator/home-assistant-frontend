@@ -334,27 +334,22 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
     match: "is" | "is_not",
     value: string | string[] | null | undefined
   ): void {
-    const negKey = (`not_` + baseKey) as "not_from" | "not_to";
+    const negKey = `not_${baseKey}`;
 
     const hasValue = !(
       value === undefined ||
       (Array.isArray(value) && value.length === 0)
     );
 
-    if (match === "is_not") {
-      delete target[baseKey];
-      if (hasValue) {
-        target[negKey] = value;
-      } else {
-        delete target[negKey];
-      }
+    const setKey = match === "is_not" ? negKey : baseKey;
+    const clearKey = match === "is_not" ? baseKey : negKey;
+
+    // Always clear the opposite key first, then set (or clear) the target key
+    delete target[clearKey];
+    if (hasValue) {
+      target[setKey] = value;
     } else {
-      delete target[negKey];
-      if (hasValue) {
-        target[baseKey] = value;
-      } else {
-        delete target[baseKey];
-      }
+      delete target[setKey];
     }
   }
 
